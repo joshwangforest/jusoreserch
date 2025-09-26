@@ -214,7 +214,7 @@ $btn.addEventListener('click', async ()=>{
       console.error(e); err++; appendRow(i+1, line, [], null, '에러');
       csvRows.push([i+1, line, '', '', '', 'ERROR']);
     }
-  })()));
+  })());
 
   await Promise.all(jobs);
   $st.textContent = `완료: ${ok} · 주의: ${warn} · 실패: ${err}`;
