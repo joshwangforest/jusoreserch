@@ -88,7 +88,9 @@ function toCSV(rows){
   return rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\r\n');
 }
 function download(name, text){
-  const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+  // UTF-8 BOM 추가로 한글 깨짐 방지
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + text], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = name; a.click();
   URL.revokeObjectURL(url);
@@ -160,7 +162,11 @@ const bulkInput = document.getElementById('bulkInput');
 const bulkTbody = document.getElementById('bulkTbody');
 const bulkStatus = document.getElementById('bulkStatus');
 const btnBulk = document.getElementById('btnBulk');
+const btnBulkRetry = document.getElementById('btnBulkRetry');
 const btnBulkCsv = document.getElementById('btnBulkCsv');
+
+// 실패한 항목들을 저장할 배열
+let bulkFailedItems = [];
 
 btnBulk.addEventListener('click', async ()=>{
   const lines = bulkInput.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -174,9 +180,11 @@ btnBulk.addEventListener('click', async ()=>{
   // 버튼 비활성화
   btnBulk.disabled = true;
   btnBulk.textContent = '처리 중...';
+  btnBulkRetry.disabled = true;
 
   let ok=0,warn=0,err=0;
-  const csvRows = [['index','input','matched_addr','zipNo','choice','note']];
+  const csvRows = [['번호','입력주소','매칭주소','우편번호','선택','비고']];
+  bulkFailedItems = []; // 실패 항목 초기화
 
   const tasks = lines.map((keyword, idx)=> (async ()=>{
     try{
@@ -185,7 +193,9 @@ btnBulk.addEventListener('click', async ()=>{
       if(code!=="0") throw new Error(res?.results?.common?.errorMessage||'API 오류');
       const list = res?.results?.juso || [];
       if(list.length===0){
-        err++; appendBulkRow(idx+1, keyword, [], null, '매칭없음');
+        err++; 
+        bulkFailedItems.push({idx: idx+1, keyword, reason: 'NO_MATCH'});
+        appendBulkRow(idx+1, keyword, [], null, '매칭없음');
         csvRows.push([idx+1, keyword, '', '', '', 'NO_MATCH']);
         return;
       }
@@ -198,6 +208,7 @@ btnBulk.addEventListener('click', async ()=>{
       csvRows.push([idx+1, keyword, best.roadAddr||best.jibunAddr||'', zipStr(best.zipNo||''), 'auto', note]);
     }catch(e){
       console.error(e); err++;
+      bulkFailedItems.push({idx: idx+1, keyword, reason: 'ERROR', error: e.message});
       appendBulkRow(idx+1, keyword, [], null, '에러');
       csvRows.push([idx+1, keyword, '', '', '', 'ERROR']);
     }
@@ -211,6 +222,7 @@ btnBulk.addEventListener('click', async ()=>{
   // 버튼 복원
   btnBulk.disabled = false;
   btnBulk.textContent = '우편번호 추출';
+  btnBulkRetry.disabled = bulkFailedItems.length === 0;
 });
 
 function appendBulkRow(i, input, candidates, best, note){
@@ -245,6 +257,54 @@ function appendBulkRow(i, input, candidates, best, note){
   }
 }
 
+// 실패 재실행 기능
+btnBulkRetry.addEventListener('click', async ()=>{
+  if(bulkFailedItems.length === 0) return;
+  
+  btnBulkRetry.disabled = true;
+  btnBulkRetry.textContent = '재실행 중...';
+  
+  let retryOk = 0, retryErr = 0;
+  
+  for(const item of bulkFailedItems) {
+    try {
+      const res = await callKorSearch(item.keyword, {per:10});
+      const code = res?.results?.common?.errorCode;
+      if(code !== "0") throw new Error(res?.results?.common?.errorMessage || 'API 오류');
+      
+      const list = res?.results?.juso || [];
+      if(list.length > 0) {
+        list.sort((a,b) => scoreJuso(b, item.keyword) - scoreJuso(a, item.keyword));
+        const best = list[0];
+        const note = list.length > 1 ? `다중매칭 ${list.length}건` : '';
+        
+        // 기존 행 업데이트
+        const existingRow = bulkTbody.querySelector(`tr:nth-child(${item.idx})`);
+        if(existingRow) {
+          const addrCell = existingRow.cells[2];
+          const zipCell = existingRow.cells[3];
+          addrCell.innerHTML = esc(best.roadAddr || best.jibunAddr || '-');
+          zipCell.innerHTML = `<strong>${esc(zipStr(best.zipNo || ''))}</strong>`;
+        }
+        
+        retryOk++;
+      } else {
+        retryErr++;
+      }
+    } catch(e) {
+      console.error(e);
+      retryErr++;
+    }
+  }
+  
+  btnBulkRetry.disabled = false;
+  btnBulkRetry.textContent = '실패 재실행';
+  
+  if(retryOk > 0) {
+    bulkStatus.textContent += ` | 재실행 성공: ${retryOk}`;
+  }
+});
+
 /** =========================
  *  ② 영문 → 한글 변환 (정확도 보강)
  *  - 1단계: 영문 API로 후보 수집
@@ -254,7 +314,11 @@ const engInput = document.getElementById('engInput');
 const engTbody = document.getElementById('engTbody');
 const engStatus = document.getElementById('engStatus');
 const btnEng = document.getElementById('btnEng');
+const btnEngRetry = document.getElementById('btnEngRetry');
 const btnEngCsv = document.getElementById('btnEngCsv');
+
+// 실패한 항목들을 저장할 배열
+let engFailedItems = [];
 
 btnEng.addEventListener('click', async ()=>{
   const lines = engInput.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -268,9 +332,11 @@ btnEng.addEventListener('click', async ()=>{
   // 버튼 비활성화
   btnEng.disabled = true;
   btnEng.textContent = '처리 중...';
+  btnEngRetry.disabled = true;
 
   let ok=0,warn=0,err=0;
-  const csvRows = [['index','input_en','kor_addr','zipNo','choice','note']];
+  const csvRows = [['번호','영문주소','한글주소','우편번호','선택','비고']];
+  engFailedItems = []; // 실패 항목 초기화
 
   const tasks = lines.map((en, idx)=> (async ()=>{
     try{
@@ -279,7 +345,9 @@ btnEng.addEventListener('click', async ()=>{
       if(code!=="0") throw new Error(resEn?.results?.common?.errorMessage||'영문 API 오류');
       const listEn = resEn?.results?.juso || [];
       if(listEn.length===0){
-        err++; appendEngRow(idx+1, en, [], null, '매칭없음');
+        err++; 
+        engFailedItems.push({idx: idx+1, keyword: en, reason: 'NO_MATCH'});
+        appendEngRow(idx+1, en, [], null, '매칭없음');
         csvRows.push([idx+1, en, '', '', '', 'NO_MATCH']);
         return;
       }
@@ -326,6 +394,7 @@ btnEng.addEventListener('click', async ()=>{
       csvRows.push([idx+1, en, best.roadAddr||best.jibunAddr||'', zipStr(best.zipNo||''), 'auto', note]);
     }catch(e){
       console.error(e); err++;
+      engFailedItems.push({idx: idx+1, keyword: en, reason: 'ERROR', error: e.message});
       appendEngRow(idx+1, en, [], null, '에러');
       csvRows.push([idx+1, en, '', '', '', 'ERROR']);
     }
@@ -339,6 +408,7 @@ btnEng.addEventListener('click', async ()=>{
   // 버튼 복원
   btnEng.disabled = false;
   btnEng.textContent = '영→한 변환';
+  btnEngRetry.disabled = engFailedItems.length === 0;
 });
 
 function appendEngRow(i, inputEn, candidates, best, note){
@@ -371,3 +441,82 @@ function appendEngRow(i, inputEn, candidates, best, note){
     engTbody.appendChild(noteRow);
   }
 }
+
+// 영문 주소 실패 재실행 기능
+btnEngRetry.addEventListener('click', async ()=>{
+  if(engFailedItems.length === 0) return;
+  
+  btnEngRetry.disabled = true;
+  btnEngRetry.textContent = '재실행 중...';
+  
+  let retryOk = 0, retryErr = 0;
+  
+  for(const item of engFailedItems) {
+    try {
+      const resEn = await callEngSearch(item.keyword, {per:10});
+      const code = resEn?.results?.common?.errorCode;
+      if(code !== "0") throw new Error(resEn?.results?.common?.errorMessage || '영문 API 오류');
+      
+      const listEn = resEn?.results?.juso || [];
+      if(listEn.length > 0) {
+        // 영문 결과를 한글 검색으로 역매칭
+        const korCandidates = [];
+        for(const it of listEn){
+          const kw = [
+            it.siNm||'', it.sggNm||'', it.emdNm||'',
+            it.rn||'', it.buldMnnm||'', (it.buldSlno && Number(it.buldSlno)>0? it.buldSlno : '')
+          ].join(' ').replace(/\s+/g,' ').trim();
+          if(!kw) continue;
+          try{
+            const resKor = await callKorSearch(kw, {per:5});
+            if(resKor?.results?.common?.errorCode==="0"){
+              (resKor?.results?.juso||[]).forEach(j=> korCandidates.push(j));
+            }
+          }catch(_){}
+        }
+        
+        if(korCandidates.length > 0) {
+          // 중복 제거 및 정렬
+          const map = new Map();
+          for(const j of korCandidates){
+            const key = (j.roadAddr||j.jibunAddr||'') + '|' + (j.zipNo||'');
+            if(!map.has(key)) map.set(key, j);
+          }
+          const uniq = Array.from(map.values());
+          uniq.sort((a,b)=>{
+            const sa = scoreJuso(a, item.keyword) + (a.zipNo? 1:0);
+            const sb = scoreJuso(b, item.keyword) + (b.zipNo? 1:0);
+            return sb - sa;
+          });
+          
+          const best = uniq[0];
+          
+          // 기존 행 업데이트
+          const existingRow = engTbody.querySelector(`tr:nth-child(${item.idx})`);
+          if(existingRow) {
+            const addrCell = existingRow.cells[2];
+            const zipCell = existingRow.cells[3];
+            addrCell.innerHTML = esc(best.roadAddr || best.jibunAddr || '-');
+            zipCell.innerHTML = `<strong>${esc(zipStr(best.zipNo || ''))}</strong>`;
+          }
+          
+          retryOk++;
+        } else {
+          retryErr++;
+        }
+      } else {
+        retryErr++;
+      }
+    } catch(e) {
+      console.error(e);
+      retryErr++;
+    }
+  }
+  
+  btnEngRetry.disabled = false;
+  btnEngRetry.textContent = '실패 재실행';
+  
+  if(retryOk > 0) {
+    engStatus.textContent += ` | 재실행 성공: ${retryOk}`;
+  }
+});

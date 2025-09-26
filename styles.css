@@ -45,17 +45,7 @@ h1{
   margin-top:6px;
 }
 
-.grid{
-  display:grid;
-  gap:16px;
-  grid-template-columns:1fr;
-}
-
-@media (min-width:980px){ 
-  .grid{
-    grid-template-columns:1fr 1fr;
-  } 
-}
+/* 그리드 레이아웃 제거 - 상하 배열로 변경 */
 
 .card{
   background:var(--card);

@@ -28,49 +28,49 @@
     <div class="hint">※ 키는 JSONP로 직접 호출됩니다(서버 불필요 / CORS 회피).</div>
   </div>
 
-  <div class="grid">
-    <!-- 1) 대량 주소 → 우편번호 -->
-    <section class="card">
-      <h2>① 대량 주소 → 우편번호</h2>
-      <div class="hint">각 줄에 1건씩 (예: "서울특별시 강서구 양천로 344 101동 1201호")</div>
-      <textarea id="bulkInput" placeholder="여러 줄의 도로명/지번/건물명 주소를 붙여넣으세요."></textarea>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="btnBulk">우편번호 추출</button>
-        <button class="btn secondary" id="btnBulkCsv">CSV 내보내기</button>
-        <span id="bulkStatus" class="status"></span>
-      </div>
-      <div style="overflow:auto">
-        <table>
-          <thead>
-            <tr><th>#</th><th>입력</th><th>매칭</th><th>우편번호</th><th>선택</th></tr>
-          </thead>
-          <tbody id="bulkTbody"></tbody>
-        </table>
-      </div>
-      <div class="mono" style="margin-top:8px">엔드포인트: /addrlink/addrLinkApiJsonp.do</div>
-    </section>
+  <!-- 1) 대량 주소 → 우편번호 -->
+  <section class="card" style="margin-bottom:16px">
+    <h2>① 대량 주소 → 우편번호</h2>
+    <div class="hint">각 줄에 1건씩 (예: "서울특별시 강서구 양천로 344 101동 1201호")</div>
+    <textarea id="bulkInput" placeholder="여러 줄의 도로명/지번/건물명 주소를 붙여넣으세요."></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="btnBulk">우편번호 추출</button>
+      <button class="btn secondary" id="btnBulkRetry">실패 재실행</button>
+      <button class="btn secondary" id="btnBulkCsv">CSV 내보내기</button>
+      <span id="bulkStatus" class="status"></span>
+    </div>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr><th>#</th><th>입력</th><th>매칭</th><th>우편번호</th><th>선택</th></tr>
+        </thead>
+        <tbody id="bulkTbody"></tbody>
+      </table>
+    </div>
+    <div class="mono" style="margin-top:8px">엔드포인트: /addrlink/addrLinkApiJsonp.do</div>
+  </section>
 
-    <!-- 2) 영문 → 한글 변환 -->
-    <section class="card">
-      <h2>② 영문 주소 → 한글 주소</h2>
-      <div class="hint">예: "344 Yangcheon-ro, Gangseo-gu, Seoul"</div>
-      <textarea id="engInput" placeholder="한 줄에 1건씩 영문 주소를 붙여넣으세요."></textarea>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="btnEng">영→한 변환</button>
-        <button class="btn secondary" id="btnEngCsv">CSV 내보내기</button>
-        <span id="engStatus" class="status"></span>
-      </div>
-      <div style="overflow:auto">
-        <table>
-          <thead>
-            <tr><th>#</th><th>입력(영문)</th><th>한글 매칭</th><th>우편번호</th><th>선택</th></tr>
-          </thead>
-          <tbody id="engTbody"></tbody>
-        </table>
-      </div>
-      <div class="mono" style="margin-top:8px">엔드포인트: /addrlink/addrEngApiJsonp.do → (보강조회) /addrlink/addrLinkApiJsonp.do</div>
-    </section>
-  </div>
+  <!-- 2) 영문 → 한글 변환 -->
+  <section class="card">
+    <h2>② 영문 주소 → 한글 주소</h2>
+    <div class="hint">예: "344 Yangcheon-ro, Gangseo-gu, Seoul"</div>
+    <textarea id="engInput" placeholder="한 줄에 1건씩 영문 주소를 붙여넣으세요."></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="btnEng">영→한 변환</button>
+      <button class="btn secondary" id="btnEngRetry">실패 재실행</button>
+      <button class="btn secondary" id="btnEngCsv">CSV 내보내기</button>
+      <span id="engStatus" class="status"></span>
+    </div>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr><th>#</th><th>입력(영문)</th><th>한글 매칭</th><th>우편번호</th><th>선택</th></tr>
+        </thead>
+        <tbody id="engTbody"></tbody>
+      </table>
+    </div>
+    <div class="mono" style="margin-top:8px">엔드포인트: /addrlink/addrEngApiJsonp.do → (보강조회) /addrlink/addrLinkApiJsonp.do</div>
+  </section>
 
 </div>
 
