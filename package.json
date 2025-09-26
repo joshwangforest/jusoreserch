@@ -1,0 +1,42 @@
+{
+  "name": "juso-helper",
+  "version": "1.0.0",
+  "description": "우편번호 일괄 추출 및 영문→한글 주소 변환 웹 애플리케이션",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx http-server -p 8000",
+    "dev": "npx live-server --port=8000"
+  },
+  "keywords": [
+    "주소",
+    "우편번호",
+    "주소검색",
+    "영문주소",
+    "한글주소",
+    "JSONP",
+    "API"
+  ],
+  "author": "Juso Helper Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/juso-helper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/juso-helper/issues"
+  },
+  "homepage": "https://github.com/your-username/juso-helper#readme",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
