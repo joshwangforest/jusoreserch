@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주소 도우미 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        #results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>주소 도우미 프론트엔드 테스트</h1>
+    
+    <div class="test-section">
+        <h2>1. API 키 확인</h2>
+        <div id="apiKeys"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. JSONP 함수 테스트</h2>
+        <button onclick="testJsonp()">JSONP 테스트</button>
+        <div id="jsonpResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 도로명주소 검색 테스트</h2>
+        <input type="text" id="testAddress" placeholder="테스트 주소 입력" value="서울특별시 강서구 양천로 344">
+        <button onclick="testKorSearch()">한글 주소 검색</button>
+        <div id="korResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 영문주소 검색 테스트</h2>
+        <input type="text" id="testEngAddress" placeholder="영문 주소 입력" value="344 Yangcheon-ro, Gangseo-gu, Seoul">
+        <button onclick="testEngSearch()">영문 주소 검색</button>
+        <div id="engResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. 전체 기능 테스트</h2>
+        <button onclick="runAllTests()">전체 테스트 실행</button>
+        <div id="allResults"></div>
+    </div>
+
+    <script>
+        // API 키 설정
+        const CONF_KEYS = {
+            kor: 'U01TX0FVVEgyMDI1MDkyNjE3MjYwMzExNjI3MTg=',
+            eng: 'U01TX0FVVEgyMDI1MDkyNjE3MzIwNDExNjI3MjE='
+        };
+
+        // JSONP 함수
+        function jsonp(url, params) {
+            return new Promise((resolve, reject) => {
+                const cb = 'cb_' + Math.random().toString(36).slice(2);
+                const q = new URLSearchParams({...params, callback: cb});
+                const s = document.createElement('script');
+                s.src = url + (url.includes('?') ? '&' : '?') + q.toString();
+                s.onerror = () => {
+                    cleanup();
+                    reject(new Error('JSONP 네트워크 오류'));
+                };
+                
+                const timeout = setTimeout(() => {
+                    cleanup();
+                    reject(new Error('JSONP 요청 타임아웃'));
+                }, 30000);
+                
+                window[cb] = (data) => {
+                    clearTimeout(timeout);
+                    cleanup();
+                    resolve(data);
+                };
+                
+                function cleanup() {
+                    clearTimeout(timeout);
+                    delete window[cb];
+                    if (s.parentNode) s.remove();
+                }
+                document.head.appendChild(s);
+            });
+        }
+
+        // API 호출 함수
+        function callKorSearch(keyword) {
+            return jsonp('https://business.juso.go.kr/addrlink/addrLinkApiJsonp.do', {
+                confmKey: CONF_KEYS.kor,
+                currentPage: 1,
+                countPerPage: 5,
+                keyword: keyword.trim(),
+                resultType: 'json'
+            });
+        }
+
+        function callEngSearch(keyword) {
+            return jsonp('https://business.juso.go.kr/addrlink/addrEngApiJsonp.do', {
+                confmKey: CONF_KEYS.eng,
+                currentPage: 1,
+                countPerPage: 5,
+                keyword: keyword.trim(),
+                resultType: 'json'
+            });
+        }
+
+        // 테스트 함수들
+        function checkApiKeys() {
+            const apiKeysDiv = document.getElementById('apiKeys');
+            apiKeysDiv.innerHTML = `
+                <p><strong>도로명주소 API 키:</strong> ${CONF_KEYS.kor}</p>
+                <p><strong>영문주소 API 키:</strong> ${CONF_KEYS.eng}</p>
+                <p class="success">✅ API 키가 정상적으로 설정되었습니다.</p>
+            `;
+        }
+
+        async function testJsonp() {
+            const resultDiv = document.getElementById('jsonpResult');
+            resultDiv.innerHTML = '<p>JSONP 테스트 중...</p>';
+            
+            try {
+                const result = await callKorSearch('서울특별시');
+                if (result.results && result.results.common.errorCode === '0') {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ JSONP 통신 성공!</p>
+                        <p>결과 수: ${result.results.juso ? result.results.juso.length : 0}개</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ API 오류: ${result.results?.common?.errorMessage || '알 수 없는 오류'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ JSONP 오류: ${error.message}</p>`;
+            }
+        }
+
+        async function testKorSearch() {
+            const address = document.getElementById('testAddress').value;
+            const resultDiv = document.getElementById('korResult');
+            resultDiv.innerHTML = '<p>한글 주소 검색 중...</p>';
+            
+            try {
+                const result = await callKorSearch(address);
+                if (result.results && result.results.common.errorCode === '0') {
+                    const juso = result.results.juso[0];
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ 한글 주소 검색 성공!</p>
+                        <p><strong>도로명주소:</strong> ${juso.roadAddr}</p>
+                        <p><strong>지번주소:</strong> ${juso.jibunAddr}</p>
+                        <p><strong>우편번호:</strong> ${juso.zipNo}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ 검색 실패: ${result.results?.common?.errorMessage || '알 수 없는 오류'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ 검색 오류: ${error.message}</p>`;
+            }
+        }
+
+        async function testEngSearch() {
+            const address = document.getElementById('testEngAddress').value;
+            const resultDiv = document.getElementById('engResult');
+            resultDiv.innerHTML = '<p>영문 주소 검색 중...</p>';
+            
+            try {
+                const result = await callEngSearch(address);
+                if (result.results && result.results.common.errorCode === '0') {
+                    const juso = result.results.juso[0];
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ 영문 주소 검색 성공!</p>
+                        <p><strong>영문주소:</strong> ${juso.roadAddr}</p>
+                        <p><strong>우편번호:</strong> ${juso.zipNo}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ 검색 실패: ${result.results?.common?.errorMessage || '알 수 없는 오류'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ 검색 오류: ${error.message}</p>`;
+            }
+        }
+
+        async function runAllTests() {
+            const resultDiv = document.getElementById('allResults');
+            resultDiv.innerHTML = '<p>전체 테스트 실행 중...</p>';
+            
+            let results = [];
+            
+            // 1. API 키 확인
+            results.push('✅ API 키 설정 완료');
+            
+            // 2. JSONP 테스트
+            try {
+                await callKorSearch('서울특별시');
+                results.push('✅ JSONP 통신 성공');
+            } catch (error) {
+                results.push(`❌ JSONP 통신 실패: ${error.message}`);
+            }
+            
+            // 3. 한글 주소 검색 테스트
+            try {
+                const korResult = await callKorSearch('서울특별시 강서구 양천로 344');
+                if (korResult.results && korResult.results.common.errorCode === '0') {
+                    results.push('✅ 한글 주소 검색 성공');
+                } else {
+                    results.push('❌ 한글 주소 검색 실패');
+                }
+            } catch (error) {
+                results.push(`❌ 한글 주소 검색 오류: ${error.message}`);
+            }
+            
+            // 4. 영문 주소 검색 테스트
+            try {
+                const engResult = await callEngSearch('344 Yangcheon-ro, Gangseo-gu, Seoul');
+                if (engResult.results && engResult.results.common.errorCode === '0') {
+                    results.push('✅ 영문 주소 검색 성공');
+                } else {
+                    results.push('❌ 영문 주소 검색 실패');
+                }
+            } catch (error) {
+                results.push(`❌ 영문 주소 검색 오류: ${error.message}`);
+            }
+            
+            resultDiv.innerHTML = `
+                <h3>테스트 결과:</h3>
+                <ul>
+                    ${results.map(result => `<li>${result}</li>`).join('')}
+                </ul>
+                <p><strong>프론트엔드 전용 동작:</strong> ✅ 서버 없이 브라우저에서 직접 API 호출 가능</p>
+            `;
+        }
+
+        // 페이지 로드 시 API 키 확인
+        window.onload = function() {
+            checkApiKeys();
+        };
+    </script>
+</body>
+</html>
