@@ -201,7 +201,7 @@ btnBulk.addEventListener('click', async ()=>{
       appendBulkRow(idx+1, keyword, [], null, '에러');
       csvRows.push([idx+1, keyword, '', '', '', 'ERROR']);
     }
-  })()));
+  })());
 
   await Promise.all(tasks);
   bulkStatus.textContent = `완료: ${ok} · 주의: ${warn} · 실패: ${err}`;
@@ -329,7 +329,7 @@ btnEng.addEventListener('click', async ()=>{
       appendEngRow(idx+1, en, [], null, '에러');
       csvRows.push([idx+1, en, '', '', '', 'ERROR']);
     }
-  })()));
+  })());
 
   await Promise.all(tasks);
   engStatus.textContent = `완료: ${ok} · 주의: ${warn} · 실패: ${err}`;
