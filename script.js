@@ -165,17 +165,40 @@ const translateStatus = document.getElementById('translateStatus');
 const btnTranslate = document.getElementById('btnTranslate');
 const btnTranslateCopy = document.getElementById('btnTranslateCopy');
 
-// Google Translate API를 사용한 번역 (무료 버전)
+// Google Translate API를 사용한 번역 (개선된 버전)
 async function translateText(text) {
   try {
-    // Google Translate 무료 API 사용
-    const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q=${encodeURIComponent(text)}`);
-    const data = await response.json();
+    // 여러 번역 API 시도
+    const apis = [
+      // Google Translate (무료)
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q=${encodeURIComponent(text)}`,
+      // MyMemory API (백업)
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|ko`
+    ];
     
-    if (data && data[0] && data[0][0]) {
-      return data[0].map(item => item[0]).join('');
+    for (const apiUrl of apis) {
+      try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        
+        if (apiUrl.includes('googleapis')) {
+          // Google Translate 응답 처리
+          if (data && data[0] && data[0][0]) {
+            return data[0].map(item => item[0]).join('');
+          }
+        } else if (apiUrl.includes('mymemory')) {
+          // MyMemory API 응답 처리
+          if (data && data.responseData && data.responseData.translatedText) {
+            return data.responseData.translatedText;
+          }
+        }
+      } catch (apiError) {
+        console.warn('API 시도 실패:', apiUrl, apiError);
+        continue;
+      }
     }
-    throw new Error('번역 결과를 찾을 수 없습니다.');
+    
+    throw new Error('모든 번역 API가 실패했습니다.');
   } catch (error) {
     console.error('번역 오류:', error);
     throw error;
