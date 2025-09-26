@@ -16,9 +16,19 @@
     </div>
   </div>
 
-  <!-- 0) 영문 → 한글 번역 -->
+  <!-- 0) 영문주소번역 -->
   <section class="card" style="margin-bottom:16px">
-    <h2>① 영문 → 한글 번역</h2>
+    <h2>① 영문주소번역</h2>
+    <div class="hint">상세주소 API로 정확도 강화된 영문 주소 번역</div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" onclick="window.open('address-translate.html', '_blank')">영문주소번역 열기</button>
+      <span class="status">새 창에서 고급 영문주소 번역 도구를 사용하세요</span>
+    </div>
+  </section>
+
+  <!-- 1) 영문 → 한글 번역 -->
+  <section class="card" style="margin-bottom:16px">
+    <h2>② 영문 → 한글 번역</h2>
     <div class="hint">영문 텍스트를 한글로 번역합니다 (Google Translate API 사용)</div>
     <textarea id="translateInput" placeholder="번역할 영문 텍스트를 입력하세요."></textarea>
     <div class="row" style="margin-top:10px">
@@ -33,7 +43,7 @@
 
   <!-- 2) 영문 주소 → 한글 주소 -->
   <section class="card" style="margin-bottom:16px">
-    <h2>② 영문 주소 → 한글 주소</h2>
+    <h2>③ 영문 주소 → 한글 주소</h2>
     <div class="hint">예: "344 Yangcheon-ro, Gangseo-gu, Seoul"</div>
     <textarea id="engInput" placeholder="한 줄에 1건씩 영문 주소를 붙여넣으세요."></textarea>
     <div class="row" style="margin-top:10px">
@@ -55,7 +65,7 @@
 
   <!-- 3) 대량주소 → 우편번호 추출 -->
   <section class="card" style="margin-bottom:16px">
-    <h2>③ 대량주소 → 우편번호 추출</h2>
+    <h2>④ 대량주소 → 우편번호 추출</h2>
     <div class="hint">각 줄에 1건씩 (예: "서울특별시 강서구 양천로 344 101동 1201호")</div>
     <textarea id="bulkInput" placeholder="여러 줄의 도로명/지번/건물명 주소를 붙여넣으세요."></textarea>
     <div class="row" style="margin-top:10px">

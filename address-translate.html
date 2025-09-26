@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>영문 주소 → 한글 주소 번역 (프론트 전용)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+  <div class="brand">
+    <div class="logo"></div>
+    <div>
+      <h1>영문 주소 → 한글 주소 번역</h1>
+      <div class="subtitle">JSONP / 프론트 전용 · 상세주소 API로 정확도 강화</div>
+    </div>
+  </div>
+
+  <section class="card" style="margin-bottom:12px">
+    <div class="row">
+      <div class="mono">도로명/상세용 KEY:</div>
+      <div class="mono" id="keyKor">U01TX0FVVEgyMDI1MDkyNjE3MjYwMzExNjI3MTg=</div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <div class="mono">영문검색 KEY:</div>
+      <div class="mono" id="keyEng">U01TX0FVVEgyMDI1MDkyNjE3MzIwNDExNjI3MjE=</div>
+    </div>
+    <div class="hint">브라우저에서 바로 호출합니다(서버 불필요 / CORS 회피: JSONP).</div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin:0 0 8px">영문 주소 입력</h2>
+    <div class="hint">각 줄에 1건씩 입력 (예: <em>344 Yangcheon-ro, Gangseo-gu, Seoul</em>)</div>
+    <textarea id="engInput" placeholder="한 줄에 1건씩 영문 주소를 붙여넣으세요."></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="btnRun">영→한 번역</button>
+      <button class="btn secondary" id="btnCsv">CSV 내보내기</button>
+      <span id="st" class="status"></span>
+    </div>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr><th>#</th><th>입력(영문)</th><th>한글 도로명주소</th><th>우편번호</th><th>다른 후보 선택</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="mono" style="margin-top:8px">
+      eng: /addrlink/addrEngApiJsonp.do → detail: /addrlink/addrDetailApiJsonp.do → (fallback) kor: /addrlink/addrLinkApiJsonp.do
+    </div>
+  </section>
+</div>
+
+<script src="address-translate.js"></script>
+</body>
+</html>
