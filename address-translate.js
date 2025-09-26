@@ -111,34 +111,65 @@ async function translateOne(enText){
   const out = { best:null, candidates:[] };
 
   // 1) 영문 검색
-  const rEn = await API.engSearch(enText).catch(()=>null);
-  const okEn = rEn?.results?.common?.errorCode==="0";
-  const listEn = okEn ? (rEn?.results?.juso||[]) : [];
-  if(!okEn || listEn.length===0) return out;
+  try {
+    const rEn = await API.engSearch(enText);
+    console.log('영문 검색 결과:', rEn);
+    
+    const okEn = rEn?.results?.common?.errorCode==="0";
+    const listEn = okEn ? (rEn?.results?.juso||[]) : [];
+    
+    if(!okEn) {
+      console.log('영문 검색 실패:', rEn?.results?.common?.errorMessage);
+      return out;
+    }
+    
+    if(listEn.length===0) {
+      console.log('영문 검색 결과 없음');
+      return out;
+    }
+    
+    console.log('영문 검색 성공, 결과 수:', listEn.length);
+  } catch(error) {
+    console.error('영문 검색 오류:', error);
+    return out;
+  }
 
   // 2) detail 재조회(가능한 후보 모두 시도)
+  const rEn = await API.engSearch(enText);
+  const listEn = rEn?.results?.juso || [];
+  
   for(const it of listEn){
     const {admCd, rnMgtSn, udrtYn, buldMnnm, buldSlno} = it;
     if(admCd && rnMgtSn && buldMnnm!=null){
-      const rD = await API.detail({admCd, rnMgtSn, udrtYn, buldMnnm, buldSlno}).catch(()=>null);
-      if(rD?.results?.common?.errorCode==="0"){
-        const j = (rD?.results?.juso||[])[0];
-        if(j){
-          const cand = {
-            roadAddr: j.roadAddr||'',
-            jibunAddr: j.jibunAddr||'',
-            zipNo: zipStr(j.zipNo||''),
-            source:'detail'
-          };
-          cand.score = scoreCandidate(cand, enText);
-          out.candidates.push(cand);
+      try {
+        const rD = await API.detail({admCd, rnMgtSn, udrtYn, buldMnnm, buldSlno});
+        console.log('상세주소 API 결과:', rD);
+        
+        if(rD?.results?.common?.errorCode==="0"){
+          const j = (rD?.results?.juso||[])[0];
+          if(j){
+            const cand = {
+              roadAddr: j.roadAddr||'',
+              jibunAddr: j.jibunAddr||'',
+              zipNo: zipStr(j.zipNo||''),
+              source:'detail'
+            };
+            cand.score = scoreCandidate(cand, enText);
+            out.candidates.push(cand);
+            console.log('상세주소 후보 추가:', cand);
+          }
+        } else {
+          console.log('상세주소 API 실패:', rD?.results?.common?.errorMessage);
         }
+      } catch(error) {
+        console.error('상세주소 API 오류:', error);
       }
     }
   }
 
   // 3) detail이 없으면 kor 검색으로 역탐색
   if(out.candidates.length===0){
+    console.log('상세주소 결과 없음, 한글 검색으로 역탐색 시작');
     const head = listEn.slice(0,3);
     for(const it of head){
       const kw = clean([
@@ -147,23 +178,35 @@ async function translateOne(enText){
         (it.buldSlno && Number(it.buldSlno)>0? it.buldSlno : '')
       ].join(' '));
       if(!kw) continue;
-      const rKor = await API.korSearch(kw,{per:5}).catch(()=>null);
-      if(rKor?.results?.common?.errorCode==="0"){
-        (rKor?.results?.juso||[]).forEach(j=>{
-          const cand = {
-            roadAddr: j.roadAddr||'',
-            jibunAddr: j.jibunAddr||'',
-            zipNo: zipStr(j.zipNo||''),
-            source:'korSearch'
-          };
-          cand.score = scoreCandidate(cand, enText);
-          out.candidates.push(cand);
-        });
+      
+      try {
+        console.log('한글 검색 키워드:', kw);
+        const rKor = await API.korSearch(kw,{per:5});
+        console.log('한글 검색 결과:', rKor);
+        
+        if(rKor?.results?.common?.errorCode==="0"){
+          (rKor?.results?.juso||[]).forEach(j=>{
+            const cand = {
+              roadAddr: j.roadAddr||'',
+              jibunAddr: j.jibunAddr||'',
+              zipNo: zipStr(j.zipNo||''),
+              source:'korSearch'
+            };
+            cand.score = scoreCandidate(cand, enText);
+            out.candidates.push(cand);
+            console.log('한글 검색 후보 추가:', cand);
+          });
+        } else {
+          console.log('한글 검색 실패:', rKor?.results?.common?.errorMessage);
+        }
+      } catch(error) {
+        console.error('한글 검색 오류:', error);
       }
     }
   }
 
   // 4) 중복 제거 + 정렬 + 베스트 선택
+  console.log('전체 후보 수:', out.candidates.length);
   const seen = new Set(), uniq = [];
   for(const c of out.candidates){
     const k = (c.roadAddr||'')+'|'+(c.zipNo||'');
@@ -172,6 +215,10 @@ async function translateOne(enText){
   uniq.sort((a,b)=>(b.score||0)-(a.score||0));
   out.candidates = uniq;
   out.best = uniq[0]||null;
+  
+  console.log('최종 후보 수:', uniq.length);
+  console.log('선택된 베스트:', out.best);
+  
   return out;
 }
 
@@ -200,8 +247,12 @@ $btn.addEventListener('click', async ()=>{
 
   const jobs = lines.map((line, i)=> (async ()=>{
     try{
+      console.log(`처리 시작: ${i+1}번째 주소 - ${line}`);
       const r = await translateOne(line);
+      console.log(`처리 완료: ${i+1}번째 주소 결과:`, r);
+      
       if(!r.best){
+        console.log(`매칭 실패: ${i+1}번째 주소`);
         err++; appendRow(i+1, line, [], null, '매칭없음');
         csvRows.push([i+1, line, '', '', '', 'NO_MATCH']);
         return;
@@ -211,7 +262,8 @@ $btn.addEventListener('click', async ()=>{
       appendRow(i+1, line, r.candidates, r.best, note);
       csvRows.push([i+1, line, r.best.roadAddr||'', r.best.zipNo||'', 'auto', note]);
     }catch(e){
-      console.error(e); err++; appendRow(i+1, line, [], null, '에러');
+      console.error(`처리 오류: ${i+1}번째 주소`, e); 
+      err++; appendRow(i+1, line, [], null, '에러');
       csvRows.push([i+1, line, '', '', '', 'ERROR']);
     }
   })());
